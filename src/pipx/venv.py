@@ -14,7 +14,7 @@ except ImportError:
 from packaging.utils import canonicalize_name
 
 from pipx.animate import animate
-from pipx.constants import PIPX_SHARED_PTH, ExitCode
+from pipx.constants import PIPX_KEYRING_PTH, PIPX_SHARED_PTH, ExitCode
 from pipx.emojis import hazard
 from pipx.interpreter import DEFAULT_PYTHON
 from pipx.package_specifier import (
@@ -163,7 +163,8 @@ class Venv:
         subprocess_post_check(venv_process)
 
         shared_libs.create(self.verbose)
-        pipx_pth = get_site_packages(self.python_path) / PIPX_SHARED_PTH
+        site_packages = get_site_packages(self.python_path)
+        pipx_pth = site_packages / PIPX_SHARED_PTH
         # write path pointing to the shared libs site-packages directory
         # example pipx_pth location:
         #   ~/.local/pipx/venvs/black/lib/python3.8/site-packages/pipx_shared.pth
@@ -173,7 +174,16 @@ class Venv:
         # https://docs.python.org/3/library/site.html
         # A path configuration file is a file whose name has the form 'name.pth'.
         # its contents are additional items (one per line) to be added to sys.path
-        pipx_pth.write_text(f"{shared_libs.site_packages}\n", encoding="utf-8")
+        #
+        # addsitedir() is used so that .pth files get processed
+        pipx_pth.write_text(
+            f"import site; site.addsitedir(r'{shared_libs.site_packages}')\n",
+            encoding="utf-8",
+        )
+
+        if self.name == "keyring":
+            shared_pth = shared_libs.site_packages / PIPX_KEYRING_PTH
+            shared_pth.write_text(f"{site_packages}\n", encoding="utf-8")
 
         self.pipx_metadata.venv_args = venv_args
         self.pipx_metadata.python_version = self.get_python_version()
