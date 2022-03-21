@@ -237,7 +237,7 @@ class Venv:
         with animate(
             f"installing {full_package_description(package_name, package_or_url)}",
             self.do_animation,
-        ):
+        ) as callback:
             # do not use -q with `pip install` so subprocess_post_check_pip_errors
             #   has more information to analyze in case of failure.
             cmd = (
@@ -247,7 +247,9 @@ class Venv:
             )
             # no logging because any errors will be specially logged by
             #   subprocess_post_check_handle_pip_error()
-            pip_process = run_subprocess(cmd, log_stdout=False, log_stderr=False)
+            pip_process = run_subprocess(
+                cmd, log_stdout=True, log_stderr=True, callback=callback
+            )
         subprocess_post_check_handle_pip_error(pip_process)
         if pip_process.returncode:
             raise PipxError(

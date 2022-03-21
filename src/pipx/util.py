@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 import random
@@ -19,6 +20,8 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    Callable,
+    AnyStr,
 )
 
 import pipx.constants
@@ -163,6 +166,7 @@ def run_subprocess(
     log_cmd_str: Optional[str] = None,
     log_stdout: bool = True,
     log_stderr: bool = True,
+    callback: Optional[Callable[[AnyStr, AnyStr], None]] = None,
 ) -> "subprocess.CompletedProcess[str]":
     """Run arbitrary command as subprocess, capturing stderr and stout"""
     env = dict(os.environ)
@@ -173,22 +177,30 @@ def run_subprocess(
     logger.info(f"running {log_cmd_str}")
     # windows cannot take Path objects, only strings
     cmd_str_list = [str(c) for c in cmd]
-    completed_process = subprocess.run(
+    popen = subprocess.Popen(
         cmd_str_list,
         env=env,
         stdout=subprocess.PIPE if capture_stdout else None,
         stderr=subprocess.PIPE if capture_stderr else None,
         encoding="utf-8",
         universal_newlines=True,
+        bufsize=1,
     )
 
-    if capture_stdout and log_stdout:
-        logger.debug(f"stdout: {completed_process.stdout}".rstrip())
-    if capture_stderr and log_stderr:
-        logger.debug(f"stderr: {completed_process.stderr}".rstrip())
-    logger.debug(f"returncode: {completed_process.returncode}")
+    if callback:
+        stdout, stderr = callback(popen)
+    else:
+        stdout, stderr = popen.communicate()
 
-    return completed_process
+    if capture_stdout and log_stdout:
+        logger.debug(f"stdout: {stdout}".rstrip())
+    if capture_stderr and log_stderr:
+        logger.debug(f"stderr: {stderr}".rstrip())
+    logger.debug(f"returncode: {popen.returncode}")
+
+    return subprocess.CompletedProcess(
+        args=popen.args, returncode=popen.returncode, stdout=stdout, stderr=stderr
+    )
 
 
 def subprocess_post_check(
