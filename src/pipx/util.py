@@ -248,7 +248,7 @@ def analyze_pip_output(pip_stdout: str, pip_stderr: str) -> None:
     last_collecting_dep: Optional[str] = None
     # for any useful information in stdout, `pip install` must be run without
     #   the -q option
-    for line in pip_stdout.split("\n"):
+    for line in pip_stdout.split(os.linesep):
         failed_match = re.search(r"Failed to build\s+(\S.+)$", line)
         collecting_match = re.search(r"^\s*Collecting\s+(\S+)", line)
         if failed_match:
@@ -330,6 +330,7 @@ def analyze_pip_output(pip_stdout: str, pip_stderr: str) -> None:
 
 def subprocess_post_check_handle_pip_error(
     completed_process: "subprocess.CompletedProcess[str]",
+    extra_log: Optional[tuple[str, Path]] = None,
 ) -> None:
     if completed_process.returncode:
         logger.info(f"{' '.join(completed_process.args)!r} failed")
@@ -348,13 +349,23 @@ def subprocess_post_check_handle_pip_error(
             print("----------", file=pip_error_fh)
             if completed_process.stderr is not None:
                 print(completed_process.stderr, file=pip_error_fh, end="")
+            if extra_log:
+                header, pip_log = extra_log
+                print(f"\n{header}", file=pip_error_fh)
+                print("----------", file=pip_error_fh)
+                if pip_log.exists():
+                    with pip_log.open("r", encoding="utf-8") as f:
+                        print(f.read(), file=pip_error_fh)
 
         logger.error(
             "Fatal error from pip prevented installation. Full pip output in file:\n"
             f"    {pip_error_file}"
         )
 
-        analyze_pip_output(completed_process.stdout, completed_process.stderr)
+        analyze_pip_output(
+            completed_process.stdout if completed_process.stdout else "",
+            completed_process.stderr if completed_process.stderr else "",
+        )
 
 
 def exec_app(

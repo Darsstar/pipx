@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import tempfile
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
@@ -234,21 +235,40 @@ class Venv:
             package_or_url, pip_args
         )
 
-        with animate(
-            f"installing {full_package_description(package_name, package_or_url)}",
-            self.do_animation,
-        ):
-            # do not use -q with `pip install` so subprocess_post_check_pip_errors
-            #   has more information to analyze in case of failure.
-            cmd = (
-                [str(self.python_path), "-m", "pip", "install"]
-                + pip_args
-                + [package_or_url]
+        with tempfile.TemporaryDirectory() as tmp:
+            with animate(
+                f"installing {full_package_description(package_name, package_or_url)}",
+                self.do_animation,
+            ):
+                pip_log = Path(tmp) / "pip.log"
+
+                # do not use -q with `pip install` so subprocess_post_check_pip_errors
+                #   has more information to analyze in case of failure.
+                cmd = (
+                    [
+                        str(self.python_path),
+                        "-m",
+                        "pip",
+                        "install",
+                        "-qqq",
+                        "--log",
+                        pip_log,
+                    ]
+                    + pip_args
+                    + [package_or_url]
+                )
+                # no logging because any errors will be specially logged by
+                #   subprocess_post_check_handle_pip_error()
+                pip_process = run_subprocess(
+                    cmd,
+                    capture_stdout=False,
+                    capture_stderr=False,
+                    log_stdout=False,
+                    log_stderr=False,
+                )
+            subprocess_post_check_handle_pip_error(
+                pip_process, extra_log=("DEBUG", pip_log)
             )
-            # no logging because any errors will be specially logged by
-            #   subprocess_post_check_handle_pip_error()
-            pip_process = run_subprocess(cmd, log_stdout=False, log_stderr=False)
-        subprocess_post_check_handle_pip_error(pip_process)
         if pip_process.returncode:
             raise PipxError(
                 f"Error installing {full_package_description(package_name, package_or_url)}."

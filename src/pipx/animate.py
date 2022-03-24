@@ -9,7 +9,10 @@ from pipx.emojis import EMOJI_SUPPORT
 
 stderr_is_tty = sys.stderr.isatty()
 
-CLEAR_LINE = "\033[K"
+REVERSE_INDEX = "\N{ESCAPE}M"
+CLEAR_LINE = "\N{ESCAPE}[K"
+SAVE_CURSOR = "\N{ESCAPE}7"
+RESTORE_CURSOR = "\N{ESCAPE}8"
 EMOJI_ANIMATION_FRAMES = ["⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"]
 NONEMOJI_ANIMATION_FRAMES = ["", ".", "..", "..."]
 EMOJI_FRAME_PERIOD = 0.1
@@ -81,6 +84,8 @@ def print_animation(
 ) -> None:
     (term_cols, _) = shutil.get_terminal_size(fallback=(9999, 24))
     event.wait(delay)
+    sys.stderr.write(SAVE_CURSOR)
+    sys.stdout.write(SAVE_CURSOR)
     while not event.wait(0):
         for s in symbols:
             if animate_at_beginning_of_line:
@@ -96,6 +101,7 @@ def print_animation(
             sys.stderr.write(cur_line)
             sys.stderr.flush()
             if event.wait(period):
+                sys.stderr.write("\r")
                 break
 
 
@@ -129,5 +135,5 @@ def show_cursor() -> None:
 
 def clear_line() -> None:
     """Clears current line and positions cursor at start of line"""
-    sys.stderr.write(f"\r{CLEAR_LINE}")
-    sys.stdout.write(f"\r{CLEAR_LINE}")
+    sys.stderr.write(f"{RESTORE_CURSOR}")
+    sys.stdout.write(f"{RESTORE_CURSOR}")
