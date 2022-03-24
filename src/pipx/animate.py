@@ -1,3 +1,4 @@
+import os
 import shutil
 import sys
 from contextlib import contextmanager
@@ -90,12 +91,12 @@ def print_animation(
         for s in symbols:
             if animate_at_beginning_of_line:
                 max_message_len = term_cols - len(f"{s} ... ")
-                cur_line = f"{s} {message:.{max_message_len}}"
+                cur_line = f"{s} {message:.{max_message_len}}{os.linesep}"
                 if len(message) > max_message_len:
                     cur_line += "..."
             else:
                 max_message_len = term_cols - len("... ")
-                cur_line = f"{message:.{max_message_len}}{s}"
+                cur_line = f"{message:.{max_message_len}}{s}{os.linesep}"
 
             clear_line()
             sys.stderr.write(cur_line)
