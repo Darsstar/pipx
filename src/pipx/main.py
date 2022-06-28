@@ -143,6 +143,9 @@ def get_pip_args(parsed_args: Dict[str, str]) -> List[str]:
     if parsed_args.get("index_url"):
         pip_args += ["--index-url", parsed_args["index_url"]]
 
+    if not parsed_args.get("verbose"):
+        pip_args += ["--no-input", "--quiet", "--quiet", "--quiet"]
+
     if parsed_args.get("pip_args"):
         pip_args += shlex.split(parsed_args.get("pip_args", ""), posix=not WINDOWS)
 

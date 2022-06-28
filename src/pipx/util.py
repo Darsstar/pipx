@@ -330,7 +330,7 @@ def analyze_pip_output(pip_stdout: str, pip_stderr: str) -> None:
 
 def subprocess_post_check_handle_pip_error(
     completed_process: "subprocess.CompletedProcess[str]",
-    extra_log: Optional[tuple[str, Path]] = None,
+    pip_log: Path,
 ) -> None:
     if completed_process.returncode:
         logger.info(f"{' '.join(completed_process.args)!r} failed")
@@ -349,13 +349,12 @@ def subprocess_post_check_handle_pip_error(
             print("----------", file=pip_error_fh)
             if completed_process.stderr is not None:
                 print(completed_process.stderr, file=pip_error_fh, end="")
-            if extra_log:
-                header, pip_log = extra_log
-                print(f"\n{header}", file=pip_error_fh)
+            if pip_log:
+                print(f"\nDEBUG", file=pip_error_fh)
                 print("----------", file=pip_error_fh)
                 if pip_log.exists():
-                    with pip_log.open("r", encoding="utf-8") as f:
-                        print(f.read(), file=pip_error_fh)
+                    debug = pip_log.read_text(encoding="utf-8")
+                    print(debug, file=pip_error_fh)
 
         logger.error(
             "Fatal error from pip prevented installation. Full pip output in file:\n"
@@ -363,8 +362,8 @@ def subprocess_post_check_handle_pip_error(
         )
 
         analyze_pip_output(
-            completed_process.stdout if completed_process.stdout else "",
-            completed_process.stderr if completed_process.stderr else "",
+            completed_process.stdout or debug or "",
+            completed_process.stderr or debug or "",
         )
 
 

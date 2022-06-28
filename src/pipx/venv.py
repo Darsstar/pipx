@@ -250,7 +250,6 @@ class Venv:
                         "-m",
                         "pip",
                         "install",
-                        "-qqq",
                         "--log",
                         pip_log,
                     ]
@@ -266,9 +265,7 @@ class Venv:
                     log_stdout=False,
                     log_stderr=False,
                 )
-            subprocess_post_check_handle_pip_error(
-                pip_process, extra_log=("DEBUG", pip_log)
-            )
+            subprocess_post_check_handle_pip_error(pip_process, pip_log)
         if pip_process.returncode:
             raise PipxError(
                 f"Error installing {full_package_description(package_name, package_or_url)}."
@@ -463,7 +460,8 @@ class Venv:
     def _run_pip(self, cmd: List[str]) -> "CompletedProcess[str]":
         cmd = [str(self.python_path), "-m", "pip"] + cmd
         if not self.verbose:
-            cmd.append("-q")
+            cmd.append("-qqq")
+            cmd.append("--no-input")
         return run_subprocess(cmd)
 
     def run_pip_get_exit_code(self, cmd: List[str]) -> ExitCode:
